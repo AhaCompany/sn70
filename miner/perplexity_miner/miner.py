@@ -53,6 +53,18 @@ class PerplexityMiner:
         self.perplexity_api_key = os.environ.get("PERPLEXITY_API_KEY", "")
         self.openai_api_key = os.environ.get("OPENAI_API_KEY", "")
         
+        # Available Perplexity models (as of 2025)
+        self.perplexity_models = [
+            "mistral-7b-instruct",  # Smallest model
+            "sonar-small-online",   # Small model with online search
+            "sonar-medium-online",  # Medium model with online search
+            "mixtral-8x7b-instruct", # Mixtral model
+            "codellama-70b-instruct", # Code model
+            "llama-3-70b-instruct",  # Llama 3 70B
+            "llama-3-8b-instruct"    # Llama 3 8B
+        ]
+        self.default_model = "sonar-medium-online"  # Default to a model with search capabilities
+        
         # First try Perplexity
         if self.perplexity_api_key:
             try:
@@ -62,16 +74,30 @@ class PerplexityMiner:
                 )
                 bt.logging.info("Perplexity client initialized successfully")
                 
-                # Test the connection with a simple request
-                test_response = self.perplexity_client.chat.completions.create(
-                    model="sonar-small-chat",
-                    messages=[{"role": "user", "content": "hello"}],
-                    max_tokens=5
-                )
-                bt.logging.info("Perplexity connection test successful")
+                # Try each model until we find one that works
+                for model in self.perplexity_models:
+                    try:
+                        bt.logging.info(f"Testing Perplexity with model: {model}")
+                        test_response = self.perplexity_client.chat.completions.create(
+                            model=model,
+                            messages=[{"role": "user", "content": "hello"}],
+                            max_tokens=5
+                        )
+                        # If we get here, the model worked
+                        self.default_model = model
+                        bt.logging.info(f"Perplexity connection test successful with model: {model}")
+                        break
+                    except Exception as model_e:
+                        bt.logging.warning(f"Model {model} not available: {model_e}")
+                        continue
                 
+                # Check if we found a working model
+                if not hasattr(self, 'default_model') or not self.default_model:
+                    bt.logging.error("No working Perplexity models found")
+                    self.perplexity_client = None
+                    
             except Exception as e:
-                bt.logging.error(f"Perplexity API initialization or test failed: {e}")
+                bt.logging.error(f"Perplexity API initialization failed: {e}")
                 self.perplexity_client = None
         else:
             bt.logging.warning("No PERPLEXITY_API_KEY found")
@@ -343,20 +369,32 @@ DO NOT include any text outside the JSON array - only return the JSON array itse
 
         raw_text = None
         try:
-            # Try sonar-small-chat which is more reliable than sonar-pro for some users
-            try_model = "sonar-small-chat"
+            # Use the model we determined works during initialization
+            try_model = self.default_model
             bt.logging.info(f"{request_id} | [Perplexity] Using model: {try_model}")
             
             # Send request to Perplexity
             request_start_time = time.time()
             bt.logging.info(f"{request_id} | [Perplexity] Sending request to API")
             
-            response = self.perplexity_client.chat.completions.create(
-                model=try_model,
-                messages=messages,
-                stream=False,
-                temperature=0.2  # Lower temperature for more factual responses
-            )
+            # Different parameters based on model type
+            if "online" in try_model:
+                # Online models support web search
+                bt.logging.info(f"{request_id} | [Perplexity] Using online search capabilities")
+                response = self.perplexity_client.chat.completions.create(
+                    model=try_model,
+                    messages=messages,
+                    stream=False,
+                    temperature=0.2,  # Lower temperature for more factual responses
+                )
+            else:
+                # Standard models
+                response = self.perplexity_client.chat.completions.create(
+                    model=try_model,
+                    messages=messages,
+                    stream=False,
+                    temperature=0.2  # Lower temperature for more factual responses
+                )
             
             request_duration = time.time() - request_start_time
             bt.logging.info(f"{request_id} | [Perplexity] Received response in {request_duration:.2f}s")
