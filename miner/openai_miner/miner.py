@@ -293,22 +293,24 @@ Respond ONLY with the JSON array, no other text.
         bt.logging.info(f"{request_id} | [OpenAI] Using model: {self.config.model}")
         
         try:
-            # Log configuration before calling OpenAI
-            response_format_type = "json_array" if self.config.model in ["gpt-4o", "gpt-4-turbo", "gpt-4-0125"] else "json_object"
+            # Always use json_object since json_array is not supported
+            response_format_type = "json_object"
             bt.logging.info(f"{request_id} | [OpenAI] Using response_format: {response_format_type}")
             
             # Send request to OpenAI
             request_start_time = time.time()
             bt.logging.info(f"{request_id} | [OpenAI] Sending request to API")
             
+            # Adjust system prompt to emphasize we need an array
+            adjusted_system_prompt = system_prompt + "\n\nIMPORTANT: When responding with a JSON object, make sure it contains a top-level array under a key named 'results'. For example:\n{\n  \"results\": [\n    {\"url\": \"...\", \"snippet\": \"...\"},\n    {\"url\": \"...\", \"snippet\": \"...\"}\n  ]\n}"
+            
             response = self.openai_client.chat.completions.create(
                 model=self.config.model,
                 messages=[
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": adjusted_system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.2,  # Lower temperature for more factual responses
-                # Use json_array instead of json_object for format
                 response_format={"type": response_format_type},
                 timeout=15  # 15 second timeout for faster responses
             )
