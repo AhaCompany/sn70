@@ -53,22 +53,17 @@ class PerplexityMiner:
         self.perplexity_api_key = os.environ.get("PERPLEXITY_API_KEY", "")
         self.openai_api_key = os.environ.get("OPENAI_API_KEY", "")
         
-        # Available Perplexity models (as of 2025)
+        # Try to match original miner using sonar-pro
         self.perplexity_models = [
-            "pplx-7b-online",       # Small model with online search
-            "pplx-70b-online",      # Large model with online search
-            "pplx-7b-chat",         # Small chat model
-            "pplx-70b-chat",        # Large chat model
-            "llama-2-70b-chat",     # Meta's LLaMA 2
+            "sonar-pro",            # Main model from original miner (first try this)
+            "sonar-medium-chat",    # Alternative model 
+            "sonar-small-chat",     # Alternative model
+            "pplx-7b-online",       # New model with online search
+            "pplx-70b-online",      # New model with online search
             "mistral-7b-instruct",  # Mistral model
-            "codellama-34b-instruct",  # Code model
-            "sonar-small-chat",     # Legacy model (might still work)
-            "sonar-medium-chat",    # Legacy model (might still work)
             "claude-instant",       # Claude model on Perplexity
-            "gpt-3.5-turbo",        # GPT model on Perplexity
-            "gpt-4"                 # GPT-4 on Perplexity
         ]
-        self.default_model = "pplx-7b-online"  # Default to a model with search capabilities
+        self.default_model = "sonar-pro"  # Try to match original miner
         
         # First try Perplexity
         if self.perplexity_api_key:
@@ -374,31 +369,30 @@ DO NOT include any text outside the JSON array - only return the JSON array itse
 
         raw_text = None
         try:
-            # Use the model we determined works during initialization
-            try_model = self.default_model
+            # Use sonar-pro just like the original miner
+            try_model = "sonar-pro"
             bt.logging.info(f"{request_id} | [Perplexity] Using model: {try_model}")
             
             # Send request to Perplexity
             request_start_time = time.time()
             bt.logging.info(f"{request_id} | [Perplexity] Sending request to API")
             
-            # Different parameters based on model type
-            if "online" in try_model:
-                # Online models support web search
-                bt.logging.info(f"{request_id} | [Perplexity] Using online search capabilities")
+            # Match the original miner's configuration exactly
+            try:
                 response = self.perplexity_client.chat.completions.create(
                     model=try_model,
                     messages=messages,
-                    stream=False,
-                    temperature=0.2,  # Lower temperature for more factual responses
+                    stream=False
                 )
-            else:
-                # Standard models
+            except Exception as model_error:
+                # If sonar-pro fails, try the next best model
+                bt.logging.warning(f"{request_id} | [Perplexity] Model sonar-pro failed: {model_error}")
+                # Try sonar-small-chat as fallback
+                bt.logging.info(f"{request_id} | [Perplexity] Trying fallback model: sonar-small-chat")
                 response = self.perplexity_client.chat.completions.create(
-                    model=try_model,
+                    model="sonar-small-chat",
                     messages=messages,
-                    stream=False,
-                    temperature=0.2  # Lower temperature for more factual responses
+                    stream=False
                 )
             
             request_duration = time.time() - request_start_time
