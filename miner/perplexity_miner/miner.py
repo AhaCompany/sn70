@@ -55,15 +55,20 @@ class PerplexityMiner:
         
         # Available Perplexity models (as of 2025)
         self.perplexity_models = [
-            "mistral-7b-instruct",  # Smallest model
-            "sonar-small-online",   # Small model with online search
-            "sonar-medium-online",  # Medium model with online search
-            "mixtral-8x7b-instruct", # Mixtral model
-            "codellama-70b-instruct", # Code model
-            "llama-3-70b-instruct",  # Llama 3 70B
-            "llama-3-8b-instruct"    # Llama 3 8B
+            "pplx-7b-online",       # Small model with online search
+            "pplx-70b-online",      # Large model with online search
+            "pplx-7b-chat",         # Small chat model
+            "pplx-70b-chat",        # Large chat model
+            "llama-2-70b-chat",     # Meta's LLaMA 2
+            "mistral-7b-instruct",  # Mistral model
+            "codellama-34b-instruct",  # Code model
+            "sonar-small-chat",     # Legacy model (might still work)
+            "sonar-medium-chat",    # Legacy model (might still work)
+            "claude-instant",       # Claude model on Perplexity
+            "gpt-3.5-turbo",        # GPT model on Perplexity
+            "gpt-4"                 # GPT-4 on Perplexity
         ]
-        self.default_model = "sonar-medium-online"  # Default to a model with search capabilities
+        self.default_model = "pplx-7b-online"  # Default to a model with search capabilities
         
         # First try Perplexity
         if self.perplexity_api_key:
